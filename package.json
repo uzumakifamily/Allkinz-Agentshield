@@ -1,0 +1,21 @@
+{
+  "name": "agentshield-core",
+  "version": "1.0.0",
+  "description": "AgentShield — self-hostable trust layer for AI agents",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev":   "node -r dotenv/config server.js",
+    "test":  "node test/smoke_test.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "dotenv":         "^16.4.5",
+    "fastify":        "^4.28.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": ["ai", "agent", "safety", "policy-engine", "audit-log", "fastify"],
+  "license": "MIT"
+}
