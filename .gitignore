@@ -4,9 +4,16 @@ node_modules/
 *.db-wal
 .env
 .env.local
+.env.production
 .DS_Store
+*.log
 npm-debug.log*
 .railway/
 .claude/
 _new_design_extracted/
 *.zip
+
+# Private billing & enforcement (never publish)
+api/billing/
+api/keys.js
+middleware/plan_enforcement.js

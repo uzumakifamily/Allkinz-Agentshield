@@ -61,6 +61,31 @@ CREATE TABLE IF NOT EXISTS approval_queue (
 CREATE INDEX IF NOT EXISTS idx_approvals_action ON approval_queue(action_id);
 CREATE INDEX IF NOT EXISTS idx_approvals_status ON approval_queue(decision);
 
+-- 4. Workspaces
+CREATE TABLE IF NOT EXISTS workspaces (
+  id         TEXT PRIMARY KEY,
+  name       TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- 5. API keys — hashed, prefix-indexed, never store raw key
+CREATE TABLE IF NOT EXISTS api_keys (
+  id           TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+  key_prefix   TEXT NOT NULL UNIQUE,  -- first 16 chars of raw key (sk_live_ + 8)
+  key_hash     TEXT NOT NULL,         -- SHA-256(raw_key) hex
+  name         TEXT DEFAULT 'default',
+  last_used_at TEXT,
+  revoked_at   TEXT,
+  created_at   TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_apikeys_prefix    ON api_keys(key_prefix);
+CREATE INDEX IF NOT EXISTS idx_apikeys_workspace ON api_keys(workspace_id);
+
+-- Seed default workspace
+INSERT OR IGNORE INTO workspaces (id, name) VALUES ('default', 'Default Workspace');
+
 -- Default safe rules for the 'default' workspace
 INSERT OR IGNORE INTO shield_rules (id, workspace_id, project_id, action_type, verdict, reason)
 VALUES

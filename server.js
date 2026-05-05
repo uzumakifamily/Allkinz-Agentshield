@@ -20,8 +20,17 @@
  */
 
 require('dotenv').config();
-const shieldKernel = require('./core/shield_kernel');
-const fastify      = require('fastify')({ logger: true });
+const shieldKernel           = require('./core/shield_kernel');
+const { authMiddleware }     = require('./middleware/auth');
+const fastify                = require('fastify')({ logger: true });
+
+// ── Private modules (not in public repo — load conditionally) ──
+let planEnforcement = null;
+let billingCreateOrder = null;
+let billingWebhook = null;
+try { ({ planEnforcement } = require('./middleware/plan_enforcement')); } catch (_) {}
+try { billingCreateOrder   = require('./api/billing/create-order');    } catch (_) {}
+try { billingWebhook       = require('./api/billing/webhook');         } catch (_) {}
 
 const PORT = process.env.PORT || 3000;
 
@@ -78,10 +87,26 @@ fastify.addHook('onRequest', async (request, reply) => {
 
 // ── Routes ─────────────────────────────────────────────────────
 fastify.register(require('./api/health'),    { prefix: '/health'        });
-fastify.register(require('./api/actions'),   { prefix: '/api/actions'   });
-fastify.register(require('./api/audit'),     { prefix: '/api/audit'     });
-fastify.register(require('./api/rules'),     { prefix: '/api/rules'     });
-fastify.register(require('./api/approvals'), { prefix: '/api/approvals' });
+fastify.register(require('./api/keys'),      { prefix: '/api/keys'      });
+
+// Billing routes — only registered when private billing files are present
+if (billingCreateOrder) fastify.register(billingCreateOrder, { prefix: '/api/billing/create-order' });
+if (billingWebhook)     fastify.register(billingWebhook,     { prefix: '/api/billing/webhook'      });
+
+// Authenticated routes — API key required
+fastify.register(async (authed) => {
+  authed.addHook('preHandler', authMiddleware);
+
+  // /api/actions — auth first (parent scope), then plan enforcement if available (child scope)
+  authed.register(async (actionsScope) => {
+    if (planEnforcement) actionsScope.addHook('preHandler', planEnforcement);
+    actionsScope.register(require('./api/actions'), { prefix: '' });
+  }, { prefix: '/api/actions' });
+
+  authed.register(require('./api/audit'),     { prefix: '/api/audit'     });
+  authed.register(require('./api/rules'),     { prefix: '/api/rules'     });
+  authed.register(require('./api/approvals'), { prefix: '/api/approvals' });
+});
 
 // ── Webhook ingestion — POST /webhooks/:workspaceId ────────────
 // For use with n8n, Zapier, Make.com, or any no-code platform.

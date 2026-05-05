@@ -14,8 +14,6 @@
 const { getDb }  = require('../db');
 const shield     = require('../core/shield_kernel');
 
-const WORKSPACE_ID = process.env.WORKSPACE_ID || 'default';
-
 module.exports = async function (fastify, opts) {
 
   // ── GET /api/actions ─────────────────────────────────────────
@@ -27,7 +25,7 @@ module.exports = async function (fastify, opts) {
       const offset = (page - 1) * limit;
 
       const conditions = ['workspace_id = ?'];
-      const params     = [WORKSPACE_ID];
+      const params     = [request.workspaceId];  // set by authMiddleware
 
       const action_type = request.query.action_type || null;
       const status      = request.query.status      || null;
@@ -75,7 +73,7 @@ module.exports = async function (fastify, opts) {
     }
 
     const ctx = {
-      workspaceId: WORKSPACE_ID,
+      workspaceId: request.workspaceId,  // set by authMiddleware
       projectId:   context.project_id || context.projectId || 'default',
       agent:       context.agent      || 'api-agent',
       actionType:  action_type,
